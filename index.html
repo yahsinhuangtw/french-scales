@@ -311,15 +311,21 @@ function resetRecording() {
   document.getElementById('record-btn').classList.remove('recording');
 }
 
+function getSupportedMimeType() {
+  const types = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
 async function toggleRecord() {
   if (isRecording) { stopRecording(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     chunks = [];
-    mediaRecorder = new MediaRecorder(stream);
+    const mimeType = getSupportedMimeType();
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     mediaRecorder.ondataavailable = e => chunks.push(e.data);
     mediaRecorder.onstop = () => {
-      audioBlob = new Blob(chunks, { type: 'audio/webm' });
+      audioBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
       stream.getTracks().forEach(t => t.stop());
       document.getElementById('playback').classList.add('visible');
       const status = document.getElementById('record-status');
@@ -345,9 +351,10 @@ function stopRecording() {
 
 function playRecording() {
   if (!audioBlob) return;
-  const audio = document.getElementById('audio-playback');
-  audio.src = URL.createObjectURL(audioBlob);
-  audio.play();
+  const url = URL.createObjectURL(audioBlob);
+  const audio = new Audio(url);
+  audio.onended = () => URL.revokeObjectURL(url);
+  audio.play().catch(() => URL.revokeObjectURL(url));
 }
 
 function next() {
