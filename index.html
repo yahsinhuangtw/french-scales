@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>French Scales</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f4f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 36px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .scale-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4f46e5;
+    background: #eef2ff;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .counter {
+    font-size: 13px;
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sentence-fr {
+    font-size: 28px;
+    font-weight: 600;
+    color: #111;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    min-height: 72px;
+  }
+
+  .sentence-en {
+    font-size: 15px;
+    color: #9ca3af;
+    margin-bottom: 40px;
+    min-height: 22px;
+  }
+
+  /* Progress bar */
+  .progress-track {
+    height: 3px;
+    background: #f0ede6;
+    border-radius: 2px;
+    margin-bottom: 36px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #4f46e5;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Record button */
+  .record-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .record-btn {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4f46e5;
+    transition: transform 0.15s, background 0.2s;
+    flex-shrink: 0;
+  }
+  .record-btn:hover { transform: scale(1.06); }
+  .record-btn:active { transform: scale(0.96); }
+  .record-btn.recording {
+    background: #dc2626;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.35); }
+    50%       { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+  }
+
+  .record-status {
+    font-size: 13px;
+    color: #9ca3af;
+    height: 18px;
+  }
+  .record-status.recording { color: #dc2626; font-weight: 500; }
+  .record-status.saved { color: #16a34a; }
+
+  /* Playback + actions */
+  .playback { display: none; flex-direction: column; gap: 10px; width: 100%; }
+  .playback.visible { display: flex; }
+
+  .play-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f5f4f0;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .play-btn:hover { background: #ece9e0; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-ghost {
+    flex: 1;
+    padding: 11px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    background: white;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .btn-ghost:hover { border-color: #4f46e5; }
+
+  .btn-primary {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 10px;
+    background: #4f46e5;
+    font-size: 14px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #4338ca; }
+
+  /* Nav arrows (prev / next without recording) */
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  .nav-btn {
+    font-size: 13px;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .nav-btn:hover { color: #4f46e5; }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="top-bar">
+    <span class="scale-tag" id="scale-tag"></span>
+    <span class="counter" id="counter"></span>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <div class="sentence-fr" id="sentence-fr"></div>
+  <div class="sentence-en" id="sentence-en"></div>
+
+  <div class="record-area">
+    <button class="record-btn" id="record-btn" onclick="toggleRecord()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+        <rect x="9" y="2" width="6" height="11" rx="3"/>
+        <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="8" y1="22" x2="16" y2="22"/>
+      </svg>
+    </button>
+    <div class="record-status" id="record-status">Tap to record</div>
+
+    <div class="playback" id="playback">
+      <button class="play-btn" onclick="playRecording()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#4f46e5"><polygon points="5,3 19,12 5,21"/></svg>
+        Play back my recording
+      </button>
+      <div class="actions">
+        <button class="btn-ghost" onclick="resetRecording()">Try again</button>
+        <button class="btn-primary" onclick="next()">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="nav-btn" id="prev-btn" onclick="prev()">← Previous</button>
+    <button class="nav-btn" id="next-skip-btn" onclick="next()">Skip →</button>
+  </div>
+</div>
+
+<audio id="audio-playback"></audio>
+
+<script>
+const sentences = [
+  // Greetings & openers
+  { scale: "Greetings",   fr: "Bonjour !",                              en: "Hello!" },
+  { scale: "Greetings",   fr: "Bonsoir !",                              en: "Good evening!" },
+  { scale: "Greetings",   fr: "Ça va ?",                                en: "How's it going?" },
+  { scale: "Greetings",   fr: "Ça va bien, merci.",                     en: "I'm doing well, thanks." },
+  { scale: "Greetings",   fr: "À bientôt !",                            en: "See you soon!" },
+
+  // Requests & polite asks
+  { scale: "Requests",    fr: "Un café, s'il vous plaît.",              en: "A coffee, please." },
+  { scale: "Requests",    fr: "L'addition, s'il vous plaît.",           en: "The bill, please." },
+  { scale: "Requests",    fr: "Excusez-moi.",                           en: "Excuse me." },
+  { scale: "Requests",    fr: "Pouvez-vous m'aider ?",                  en: "Can you help me?" },
+  { scale: "Requests",    fr: "Je voudrais réserver une table.",        en: "I'd like to book a table." },
+
+  // Questions
+  { scale: "Questions",   fr: "Où sont les toilettes ?",               en: "Where are the toilets?" },
+  { scale: "Questions",   fr: "C'est combien ?",                        en: "How much is it?" },
+  { scale: "Questions",   fr: "Vous avez une chambre libre ?",          en: "Do you have a room available?" },
+  { scale: "Questions",   fr: "À quelle heure ouvre-t-on ?",           en: "What time do you open?" },
+  { scale: "Questions",   fr: "C'est loin d'ici ?",                     en: "Is it far from here?" },
+
+  // Understanding
+  { scale: "Understanding", fr: "Je ne comprends pas.",                 en: "I don't understand." },
+  { scale: "Understanding", fr: "Pouvez-vous répéter, s'il vous plaît ?", en: "Could you repeat that?" },
+  { scale: "Understanding", fr: "Plus lentement, s'il vous plaît.",    en: "More slowly, please." },
+  { scale: "Understanding", fr: "Comment dit-on… en français ?",       en: "How do you say… in French?" },
+  { scale: "Understanding", fr: "Je parle un peu français.",           en: "I speak a little French." },
+
+  // Daily life
+  { scale: "Daily life",  fr: "Je suis fatigué.",                      en: "I'm tired." },
+  { scale: "Daily life",  fr: "J'ai faim.",                            en: "I'm hungry." },
+  { scale: "Daily life",  fr: "On y va !",                             en: "Let's go!" },
+  { scale: "Daily life",  fr: "Je suis en retard.",                    en: "I'm running late." },
+  { scale: "Daily life",  fr: "Ça ne fait rien.",                      en: "It doesn't matter." },
+
+  // Reactions
+  { scale: "Reactions",   fr: "C'est parfait !",                       en: "That's perfect!" },
+  { scale: "Reactions",   fr: "Pas de problème.",                      en: "No problem." },
+  { scale: "Reactions",   fr: "C'est dommage.",                        en: "That's a shame." },
+  { scale: "Reactions",   fr: "Bien sûr !",                            en: "Of course!" },
+  { scale: "Reactions",   fr: "D'accord.",                             en: "Okay / Agreed." },
+];
+
+let current = 0;
+let mediaRecorder = null;
+let chunks = [];
+let audioBlob = null;
+let isRecording = false;
+
+function render() {
+  const s = sentences[current];
+  document.getElementById('sentence-fr').textContent = s.fr;
+  document.getElementById('sentence-en').textContent = s.en;
+  document.getElementById('scale-tag').textContent = s.scale;
+  document.getElementById('counter').textContent = `${current + 1} / ${sentences.length}`;
+  document.getElementById('progress-fill').style.width = `${((current + 1) / sentences.length) * 100}%`;
+  document.getElementById('prev-btn').disabled = current === 0;
+  resetRecording();
+}
+
+function resetRecording() {
+  if (isRecording && mediaRecorder) stopRecording();
+  audioBlob = null;
+  chunks = [];
+  document.getElementById('playback').classList.remove('visible');
+  const status = document.getElementById('record-status');
+  status.textContent = 'Tap to record';
+  status.className = 'record-status';
+  document.getElementById('record-btn').classList.remove('recording');
+}
+
+async function toggleRecord() {
+  if (isRecording) { stopRecording(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      audioBlob = new Blob(chunks, { type: 'audio/webm' });
+      stream.getTracks().forEach(t => t.stop());
+      document.getElementById('playback').classList.add('visible');
+      const status = document.getElementById('record-status');
+      status.textContent = 'Saved — play it back';
+      status.className = 'record-status saved';
+      document.getElementById('record-btn').classList.remove('recording');
+      isRecording = false;
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('record-btn').classList.add('recording');
+    const status = document.getElementById('record-status');
+    status.textContent = 'Recording… tap to stop';
+    status.className = 'record-status recording';
+  } catch {
+    document.getElementById('record-status').textContent = 'Microphone access denied';
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+}
+
+function playRecording() {
+  if (!audioBlob) return;
+  const audio = document.getElementById('audio-playback');
+  audio.src = URL.createObjectURL(audioBlob);
+  audio.play();
+}
+
+function next() {
+  if (current < sentences.length - 1) { current++; render(); }
+}
+
+function prev() {
+  if (current > 0) { current--; render(); }
+}
+
+render();
+</script>
+</body>
+</html>
